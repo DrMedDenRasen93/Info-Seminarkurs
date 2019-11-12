@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Siwa - Anubis Rising</title>
+  <script type="text/javascript">
+    document.addEventListener("keydown", keyPush);
+    document.addEventListener("mousemove", mouseMoveHandler, false);
+    window.addEventListener('mousedown', mouseKlickHandler, false);
+
+
+    // ----- VARIABLEN:
+
+    var level = 0; // An Anfang Level 0 = Startbildschirm
+
+    var maus_x = 0; // Variablen f. Koordinaten d. Mauszeigers
+    var maus_y = 0; // sichtbar f. alle Funktionen!
+    var klick = false; // wurde schon Maustaste gedrückt?
+
+
+
+    var jump = false;
+    var y = 0; // Höhe der Barriere
+    var frames = 0; // Zähler für Zeit bzw. Frames
+    var soundJump = new Audio('');
+    var soundFail = new Audio('');
+
+    var counter = 0;
+
+    var leben = 10;
+
+    var geschossen = false;
+
+    var farbe_gegner = 0;
+
+    var farbe_geschoss = 0;
+
+    var imageBand  = new Image();
+    imageBand.src = "assets/pics/button1.png";
+
+    var imageButtonStart = new Image();
+    imageButtonStart.src = "assets/pics/button1.png";	//http://buttonoptimizer.com/
+	
+	var imageButtonLevel2 = new Image();
+	imageButtonLevel2.src = "assets/pics/buttonlevel2";
+
+    var imageButtonHelp = new Image();
+    imageButtonHelp.src = "assets/pics/button2.png";
+
+    var imageButtonCredits = new Image();
+    imageButtonCredits.src = "assets/pics/button3.png";
+
+    var imageMauszeiger = new Image();
+    imageMauszeiger.src = "assets/pics/leer.png";
+
+    var imageBackground = new Image();
+    imageBackground.src = "assets/pics/Background.png";
+
+    var imageBrett = new Image();
+    imageBrett.src = "assets/pics/Brett.png";
+
+    var imageGeschossRot = new Image();
+    imageGeschossRot.src = "assets/pics/geschoss_rot.png";
+
+    var imageGeschossGruen = new Image();
+    imageGeschossGruen.src = "assets/pics/geschoss_gruen.png";
+
+    var imageGeschossBlau = new Image();
+    imageGeschossBlau.src = "assets/pics/geschoss_blau.png";
+
+    var imageGeschossSchwarz = new Image();
+    imageGeschossSchwarz.src = "assets/pics/geschoss_schwarz.png";
+
+    var imageGeschossGelb = new Image();
+    imageGeschossGelb.src = "assets/pics/geschoss_gelb.png";
+
+    var imageGeschossWeis = new Image();
+    imageGeschossWeis.src = "assets/pics/geschoss_weis.png";
+
+    var ImageGeschoss = new Image();
+    ImageGeschoss.src = "assets/pics/geschoss_weis.png";
+
+    var imageGegner = new Image();
+    imageGegner.src = "assets/pics/geschoss_weis.png";
+
+
+    // -----  KONSTRUKTOREN:
+
+    function makeFigur(image, x_pos, y_pos) {
+      this.bild = image;
+      this.x = x_pos;
+      this.y = y_pos; // Position (x, y)
+
+      this.vx = 0;
+      this.vy = 0; // Geschwindigkeit in x bzw. y-Richtung
+
+      this.width = 100;
+      this.height = 100;
+
+      this.move = function() {
+        // Figur bewegen und dann für ein Frame anzeigen
+        this.x = this.x + this.vx;
+        this.y = this.y + this.vy;
+        ctx.drawImage(image, this.x, this.y);
+      }
+
+      this.draw = function() {
+        // Figur einfach nur anzeigen
+        ctx.drawImage(image, this.x, this.y);
+      }
+
+      this.gefeuert = function(xPosition) {
+        window.xNachgefeuert = xPosition;
+      }
+
+      this.crashWith = function(otherobj) {
+        // Diese Funktion prüft, ob dieses Objekt "this" mit einem anderen
+        // Objekt kollidiert ("other").
+        // Danke: https://www.w3schools.com/graphics/game_obstacles.asp
+        var myleft = this.x;
+        var myright = this.x + (this.width);
+        var mytop = this.y;
+        var mybottom = this.y + (this.height);
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+        var crash = true;
+        if ((mybottom < othertop) ||
+          (mytop > otherbottom) ||
+          (myright < otherleft) ||
+          (myleft > otherright)) {
+          crash = false;
+        }
+        return crash;
+      }
+    }
+
+    // -----  OBJEKTE:
+
+    // neue Figur (= Instanz) erzeugen:
+
+
+    var BandUnten = new makeFigur(imageBand, 800, 350);
+    BandUnten.vx = -7;
+    BandUnten.height = 1000;
+
+    var BandOben = new makeFigur(imageBand, 800, -900);
+    BandOben.vx = -7;
+    BandOben.height = 1000;
+
+    // auch Buttons und Mauszeiger sind Figuren:
+
+    var ButtonStart = new makeFigur(imageButtonStart, 700, 140);
+    ButtonStart.width = 400;
+
+    var ButtonHelp = new makeFigur(imageButtonHelp, 700, 260);
+    ButtonHelp.width = 400;
+
+    var ButtonCredits = new makeFigur(imageButtonCredits, 700, 380);
+    ButtonCredits.width = 400;
+
+    var Background = new makeFigur(imageBackground, 0, 0, 1900, 900);
+
+    var Brett = new makeFigur(imageBrett, 800, 770);
+
+    var Gegner = new makeFigur(imageGegner, 200, 260);
+
+    var Geschoss = new makeFigur(ImageGeschoss, 290, 750);
+
+    var Mauszeiger = new makeFigur(imageMauszeiger, maus_x, maus_y);
+    Mauszeiger.width = 1;
+    Mauszeiger.height = 1;
+
+
+    // ----- FUNKTIONEN:
+
+    function nachLaden() {
+
+      canv = document.getElementById("gc"); // Canvas aus HTML Teil ansteuern
+      ctx = canv.getContext("2d"); // Kontext zum "zeichnen" festlegen
+      // Die Funktion "keydown" aufrufen, wenn eine Taste gedrückt wurde
+      //  Konstruktor-Funktion für beliebige Figur
+      setInterval(game, 1000 / 75);
+    }
+
+    function level_menu() {
+      ctx.fillStyle = "#d2b773";
+      ctx.fillRect(0, 0, 1900, 900); // canvas leeren bevor etw. neues gezeichnet wird
+
+      ctx.fillStyle = "#000066"; // Dunkelblaue Schrift
+      ctx.font = "65px Arial";
+      ctx.fillText("SIWA - Anubis Rising", 600, 65);
+
+      ctx.font = "45px Arial";
+      ctx.fillText("", 160, 550);
+
+      ButtonStart.draw();
+      ButtonHelp.draw();
+      ButtonCredits.draw();
+
+      Mauszeiger.x = maus_x; // Mauszeiger Position muss jedes Frame neu
+      Mauszeiger.y = maus_y; //   ausgelesen werden!
+
+      if (Mauszeiger.crashWith(ButtonStart) && klick == true) {
+        level = 1;
+      }
+      if (Mauszeiger.crashWith(ButtonHelp) && klick == true) {
+        level = 2;
+      }
+
+      klick = false; // zurücksetzen
+    }
+
+
+
+
+
+
+
+    function ZweiFarben(){
+      ctx.fillRect(0, 0, 1900, 400);
+      Background.draw();
+      ctx.fillText("Punkte:" + counter, 600, 65);
+      
+      Geschoss.draw();
+	  Brett.draw();
+      Brett.x = maus_x - 50;
+      if (Geschoss.x == Brett.x + 50 && Geschoss.y == Brett.y + 50 && klick == true) {
+        Geschoss.x = maus_x - 50;
+      } else if (klick == false) {
+        Geschoss.x = Geschoss.gefeuert(Brett.x);
+        Geschoss.x = window.xNachgefeuert;
+      }
+      Gegner.move();
+      Gegner.vx = 10;
+
+      function GenerateGegnerColor() {
+        window.farbe_gegner = Math.floor(Math.random() * 3);
+      }
+
+
+      if (Gegner.x == 0) {
+        GenerateGegnerColor();
+      }
+
+      if (Gegner.x >= 1900) {
+        GenerateGegnerColor();
+        leben = leben - 1;
+        console.log(leben);
+        Gegner.x = 0;
+        Gegner.y = Math.random() * 500;
+      }
+
+      if (leben < 1) {
+        level = 1;
+      }
+
+      if (klick == true) {
+        Geschoss.y = Geschoss.y - 15;
+      }
+
+      if (Geschoss.crashWith(Gegner) == true && farbe_geschoss -1 == farbe_gegner) {
+        GenerateGegnerColor();
+        Gegner.y = Math.random() * 300;
+        Gegner.x = 0;
+        counter = counter + 1;
+        console.log(counter)
+        Geschoss.x = maus_x - 50;
+        Geschoss.y = 750;
+        klick = false;
+      }
+
+      if (Geschoss.y <= 1) {
+        Geschoss.x = maus_x - 50;
+        Geschoss.y = 750;
+        klick = false;
+      }
+
+      switch (farbe_geschoss) {
+        case 1:
+          ImageGeschoss.src = "assets/pics/geschoss_rot.png"
+          break;
+        case 2:
+          ImageGeschoss.src = "assets/pics/geschoss_gruen.png"
+          break;
+        case 3:
+          ImageGeschoss.src = "assets/pics/geschoss_blau.png"
+          break;
+        case 4:
+          ImageGeschoss.src = "assets/pics/geschoss_schwarz.png"
+          break;
+        case 5:
+          ImageGeschoss.src = "assets/pics/geschoss_gelb.png"
+          break;
+        case 6:
+          ImageGeschoss.src = "assets/pics/geschoss_weis.png"
+          break;
+
+      }
+
+
+      switch (farbe_gegner) {
+        case 0:
+          imageGegner.src = "assets/pics/geschoss_rot.png"
+          break;
+        case 1:
+          imageGegner.src = "assets/pics/geschoss_gruen.png"
+          break;
+        case 2:
+          imageGegner.src = "assets/pics/geschoss_blau.png"
+          break;
+        case 3:
+          imageGegner.src = "assets/pics/geschoss_schwarz.png"
+          break;
+        case 4:
+          imageGegner.src = "assets/pics/geschoss_gelb.png"
+          break;
+        case 5:
+          imageGegner.src = "assets/pics/geschoss_weis.png"
+          break;
+
+      }
+    }
+
+
+    function level_1() {
+
+      ctx.fillRect(0, 0, 1900, 400);
+      Background.draw();
+      ctx.fillText("Punkte:" + counter, 600, 65);
+      Brett.draw();
+      Geschoss.draw(); 
+      Brett.x = maus_x - 200;
+
+      if (Geschoss.x == Brett.x + 50 && Geschoss.y == Brett.y + 50 && klick == true) {
+        Geschoss.x = maus_x - 50;
+      } else if (klick == false) {
+        Geschoss.x = Geschoss.gefeuert(Brett.x + 150);
+        Geschoss.x = window.xNachgefeuert;
+      }
+      Gegner.move();
+      Gegner.vx = 10;
+
+      function GenerateGegnerColor() {
+        window.farbe_gegner = Math.floor(Math.random() * 5);
+      }
+
+
+      if (Gegner.x == 0) {
+        GenerateGegnerColor();
+      }
+
+      if (Gegner.x >= 1900) {
+        GenerateGegnerColor();
+        leben = leben - 1;
+        console.log(leben);
+        Gegner.x = 0;
+        Gegner.y = Math.random() * 500;
+      }
+
+      if (leben < 1) {
+        level = 1;
+      }
+
+      if (klick == true) {
+        Geschoss.y = Geschoss.y - 15;
+      }
+
+      if (Geschoss.crashWith(Gegner) == true && farbe_geschoss -1 == farbe_gegner) {
+        GenerateGegnerColor();
+        Gegner.y = Math.random() * 300;
+        Gegner.x = 0;
+        counter = counter + 1;
+        console.log(counter)
+        Geschoss.x = maus_x - 50;
+        Geschoss.y = 750;
+        klick = false;
+      }
+
+      if (Geschoss.y <= 1) {
+        Geschoss.x = maus_x - 50;
+        Geschoss.y = 750;
+        klick = false;
+
+
+      }
+
+      switch (farbe_geschoss) {
+        case 1:
+          ImageGeschoss.src = "assets/pics/geschoss_rot.png"
+          break;
+        case 2:
+          ImageGeschoss.src = "assets/pics/geschoss_gruen.png"
+          break;
+        case 3:
+          ImageGeschoss.src = "assets/pics/geschoss_blau.png"
+          break;
+        case 4:
+          ImageGeschoss.src = "assets/pics/geschoss_schwarz.png"
+          break;
+        case 5:
+          ImageGeschoss.src = "assets/pics/geschoss_gelb.png"
+          break;
+        case 6:
+          ImageGeschoss.src = "assets/pics/geschoss_weis.png"
+          break;
+
+      }
+
+
+      switch (farbe_gegner) {
+        case 0:
+          imageGegner.src = "assets/pics/geschoss_rot.png"
+          break;
+        case 1:
+          imageGegner.src = "assets/pics/geschoss_gruen.png"
+          break;
+        case 2:
+          imageGegner.src = "assets/pics/geschoss_blau.png"
+          break;
+        case 3:
+          imageGegner.src = "assets/pics/geschoss_schwarz.png"
+          break;
+        case 4:
+          imageGegner.src = "assets/pics/geschoss_gelb.png"
+          break;
+        case 5:
+          imageGegner.src = "assets/pics/geschoss_weis.png"
+          break;
+
+      }
+    }
+
+    function level_2() {
+      ctx.fillStyle = " #8797EF"; //blauer Hintergrund
+      ctx.fillRect(0, 0, 800, 800); // canvas leeren bevor etw. neues gezeichnet wird
+    }
+
+
+
+
+    function game() {
+
+      if (level == 0) {
+        level_menu();
+      } else if (level == 1) {
+        level_1();
+      } else if (level == 2) {
+        level_2();
+      }else if (level == 3) {
+        ZweiFarben();
+      }
+
+    }
+
+    function mouseMoveHandler(e) {
+      // Beispiel abgeändert von https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Mouse_controls
+
+      var relativeX = e.clientX - canv.offsetLeft;
+      if (relativeX > 0 && relativeX < canv.width) {
+        maus_x = relativeX;
+      }
+      var relativeY = e.clientY - canv.offsetLeft;
+      if (relativeY > 0 && relativeY < canv.height) {
+        maus_y = relativeY;
+      }
+    }
+
+    function keyPush(evt) {
+      switch (evt.keyCode) {
+        // keycodes 32 ist die Leertaste
+        // siehe: https://www.mediaevent.de/javascript/Extras-Javascript-Keycodes.html
+        case 32:
+          changecolor();
+      }
+    }
+
+    //        0 = Rot
+    //        1 = Grün
+    //        2 = Blau
+    //        3 = Schwarz
+    //        4 = Gelb
+    //        5 = Weiß
+
+    function changecolor() {
+      if(level == 3 && farbe_geschoss == 3){
+        window.farbe_geschoss = 0;
+      }
+
+      if (level == 1 && farbe_geschoss == 6) {
+        window.farbe_geschoss = 0;
+      }
+      window.farbe_geschoss = window.farbe_geschoss + 1;
+    }
+
+    function mouseKlickHandler() {
+      klick = true;
+    }
+  </script>
+
+</head>
+<!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+
+<body onload="nachLaden();">
+  <canvas id="gc" width="1900" height="900"></canvas>
+</body>
+
+</html>
